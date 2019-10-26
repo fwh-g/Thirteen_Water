@@ -237,6 +237,7 @@ class Hall(wx.Frame):
         history.Bind(wx.EVT_BUTTON, self.OnHistory)
         history.SetFont(self.font)
         all_battle = wx.Button(self.hall_p, label='对\n局\n查\n询', pos=(1100, 100), size=(80, 250))
+        all_battle.Bind(wx.EVT_BUTTON, self.OnAllBattle)
         all_battle.SetFont(self.font)
         out = wx.Button(self.hall_p, label='注销', pos=(1100, 600), size=(85, 45))
         out.Bind(wx.EVT_BUTTON, self.OnOut)
@@ -276,6 +277,11 @@ class Hall(wx.Frame):
         self.Destroy()
         history = History(self.token)
         history.Show()
+
+    def OnAllBattle(self, event):
+        self.Destroy()
+        all_battle = FindBattle(self.token)
+        all_battle.Show()
 
 
 class Game(wx.Frame):
@@ -383,24 +389,26 @@ class Rank(wx.Frame):
         for i in list1:
             x = dict(i)
             list2.append(x)
+        lenth = len(list2)
+        print(lenth)
         self.rank_p = wx.Panel(self)
         self.rank_p.Bind(wx.EVT_ERASE_BACKGROUND, self.OnPaintRank)
         self.grid = wx.grid.Grid(self.rank_p, -1)
-        self.grid.CreateGrid(70, 3)
+        self.grid.CreateGrid(lenth, 3)
         self.grid.SetSize((750, 500))
         self.grid.SetPosition((490, 100))
         for col in range(3):
             self.grid.SetColSize(col, 215)
-        for row in range(70):
+        for row in range(lenth):
             self.grid.SetRowSize(row, 30)
         self.grid.SetColLabelValue(0, "玩家id")
         self.grid.SetColLabelValue(1, "分数")
         self.grid.SetColLabelValue(2, "玩家昵称")
         self.grid.SetColLabelAlignment(wx.ALIGN_CENTER, wx.ALIGN_CENTER)
         for i, item in enumerate(list2):
-            self.grid.SetCellValue(i, 0, str(list1[i].get('player_id')))
-            self.grid.SetCellValue(i, 1, str(list1[i].get('score')))
-            self.grid.SetCellValue(i, 2, str(list1[i].get('name')))
+            self.grid.SetCellValue(i, 0, str(list2[i].get('player_id')))
+            self.grid.SetCellValue(i, 1, str(list2[i].get('score')))
+            self.grid.SetCellValue(i, 2, str(list2[i].get('name')))
             self.grid.SetCellAlignment(i, 0, wx.ALIGN_CENTER, wx.ALIGN_CENTER)
             self.grid.SetCellAlignment(i, 1, wx.ALIGN_CENTER, wx.ALIGN_CENTER)
             self.grid.SetCellAlignment(i, 2, wx.ALIGN_CENTER, wx.ALIGN_CENTER)
@@ -553,6 +561,70 @@ class History(wx.Frame):
                 self.grid.SetCellValue(i, 1, str(list1[i].get('card')))
                 self.grid.SetCellValue(i, 2, str(list1[i].get('score')))
                 self.grid.SetCellValue(i, 3, str(list1[i].get('timestamp')))
+
+
+class FindBattle(wx.Frame):
+    def __init__(self, token):
+        wx.Frame.__init__(self, None, -1, "福建十三水", size=(1276, 729), style=wx.DEFAULT_FRAME_STYLE ^ wx.RESIZE_BORDER)
+        self.Center()
+        self.find_p = None
+        self.grid = None
+        self.tip = None
+        self.get_id = None
+        self.search = None
+        self.token = token
+        self.font = wx.Font(24, wx.DEFAULT, wx.NORMAL, wx.BOLD, faceName='华文行楷')
+        self.InitFindBattle()
+
+    def InitFindBattle(self):
+        self.find_p = wx.Panel(self)
+        self.find_p.Bind(wx.EVT_ERASE_BACKGROUND, self.OnPaintFind)
+        self.grid = wx.grid.Grid(self.find_p, -1)
+        self.grid.CreateGrid(4, 4)
+        self.grid.SetSize((683, 193))
+        self.grid.SetPosition((400, 200))
+        self.grid.SetColSize(3, 120)
+        self.grid.SetColSize(1, 320)
+        self.grid.SetColLabelValue(0, "玩家id")
+        self.grid.SetColLabelValue(1, "出牌情况")
+        self.grid.SetColLabelValue(2, "玩家昵称")
+        self.grid.SetColLabelValue(3, "分数")
+        back = wx.Button(self.find_p, label='返回', pos=(1100, 630), size=(80, 40))
+        back.SetFont(self.font)
+        back.Bind(wx.EVT_BUTTON, self.OnBack)
+        self.tip = wx.StaticText(self.find_p, label='请输入要查询的战局id', pos=(450, 100), size=(190, 30))
+        self.tip.SetFont(self.font)
+        self.get_id = wx.TextCtrl(self.find_p, -1, pos=(780, 100), size=(150, 30))
+        self.search = wx.Button(self.find_p, label='搜索', pos=(935, 100), size=(80, 30))
+        self.search.SetFont(self.font)
+        self.search.Bind(wx.EVT_BUTTON, self.OnSearch)
+
+    def OnPaintFind(self, event):
+        dc = event.GetDC()
+        if not dc:
+            dc = wx.ClientDC(self)
+            rect = self.GetUpdateRegion().GetBox()
+            dc.SetClippingRect(rect)
+        dc.Clear()
+        bmp = wx.Bitmap("hall.jpg")
+        dc.DrawBitmap(bmp, 0, 0)
+
+    def OnBack(self, event):
+        self.Destroy()
+        hall = Hall(self.token)
+        hall.Show()
+
+    def OnSearch(self, event):
+        searched_id = self.get_id.GetValue()
+        url = 'http://api.revth.com/history/' + searched_id
+        headers = {"X-Auth-Token": self.token}
+        response = requests.get(url, headers=headers)
+        list1 = dict(response.json()).get('data').get('detail')
+        for i in range(4):
+            self.grid.SetCellValue(i, 0, str(list1[i].get('player_id')))
+            self.grid.SetCellValue(i, 1, str(list1[i].get('card')))
+            self.grid.SetCellValue(i, 2, str(list1[i].get('name')))
+            self.grid.SetCellValue(i, 3, str(list1[i].get('score')))
 
 
 if __name__ == '__main__':
